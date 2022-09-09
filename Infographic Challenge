@@ -1,0 +1,139 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns 
+import plotly.express as px
+
+# Paths to different datasets
+
+url_population = "https://docs.google.com/spreadsheets/d/1IbDM8z5XicMIXgr93FPwjgwoTTKMuyLfzU6cQrGZzH8/export?format=csv"
+url_gdp = "https://docs.google.com/spreadsheets/d/1RctTQmKB0hzbm1E8rGcufYdMshRdhmYdeL29nXqmvsc/export?format=csv"
+url_life_exp = "https://docs.google.com/spreadsheets/d/1H3nzTwbn8z4lJ5gJ_WfDgCeGEXK3PVGcNjQ_U5og8eo/export?format=csv"
+url_cc = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi7uUN0tNTP8P_tatvy9faJ0QaOT6T2ksARXjQaKTQFTG-pGnDFWrzU-C2kbrSVFTXJZiuTud0js29/pub?gid=0&single=true&output=csv"
+
+df_pop=pd.read_csv(url_population)
+df_gdp=pd.read_csv(url_gdp)
+df_life_exp = pd.read_csv(url_life_exp)
+df_cc = pd.read_csv(url_cc)
+
+df_cc.sample(10)
+
+
+
+df_gdp = df_gdp.rename(
+    columns={
+        "Income per person (fixed 2000 US$)":"Country"
+    }
+)
+df_pop = df_pop.rename(
+    columns={
+        "Total population":"Country"
+    }
+)
+df_life_exp = df_life_exp.rename(
+    columns={
+        "Life expectancy":"Country"
+    }
+)
+
+df_gdp.head()
+
+
+
+df_gdp_long = df_gdp.melt(
+    id_vars="Country"
+).rename(
+    columns={
+        "variable":"year",
+        "value":"gdp"
+    }
+)
+df_life_exp_long = df_life_exp.melt(
+    id_vars="Country"
+).rename(
+    columns={
+        "variable":"year",
+        "value":"LifeExp"
+    }
+)
+df_pop_long = df_pop.melt(
+    id_vars="Country"
+).rename(
+    columns={
+        "variable":"year",
+        "value":"Population"
+    }
+)
+
+#Sample only for United States
+df_life_exp_long[df_life_exp_long["Country"]=="United Sates"]
+
+
+df_pop_long["Population"] = df_pop_long["Population"].str.replace(",","").fillna("0").map(int)
+
+
+df_long = pd.merge(
+    df_gdp_long,
+    df_life_exp_long,
+    on = ["Country","year"]
+)
+
+df_long = pd.merge(
+    df_long,
+    df_cc,
+    on = "Country"
+)
+
+df_long = pd.merge(
+    df_long,
+    df_pop_long,
+    on = ["Country","year"]
+)
+
+df_long.sample(5)
+
+
+color_mapping = {
+    "Asia": "red",
+    "Oceania": "blue",
+    "Africa": "yellow",
+    "Europe": "green",
+    "North America": "orange",
+    "South America": "pink"
+}
+df_long["Continent_color"] = df_long["Continent"].map(color_mapping)
+df_long.sample(5)
+
+
+
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+
+fig, axes = plt.subplots(nrows=6,ncols=1,figsize=(20,30),sharex=True,sharey=True)
+#ax.set_title('Hans Rosling Model')
+plt.xscale("log")
+YEARS = ["1960","1970","1980","1990","2000","2010"]
+
+
+colors = ['red', 'blue', 'yellow',"green", "orange", "pink"]
+lines = [Line2D([0], [0], color=c, linewidth=3, linestyle='-') for c in colors]
+labels = ["Asia","Oceania","Africa","Europe","North America","South America"]
+
+for i,YEAR in enumerate(YEARS):
+  axes[i].set_xlabel('gdp')
+  axes[i].set_ylabel('Life Expectancy')
+  axes[i].title.set_text(f"Health compared to Wealth in {YEAR}")
+  df_long_YEAR = df_long[df_long["year"]==YEAR]
+  axes[i].scatter(
+      x = df_long_YEAR["gdp"],
+      y = df_long_YEAR["LifeExp"],
+      c = df_long_YEAR["Continent_color"],
+      s = df_long_YEAR["Population"]/2000000
+  )
+
+axes[0].legend(lines, labels)
+axes[1].legend(lines, labels)
+axes[2].legend(lines, labels)
+axes[3].legend(lines, labels)
+axes[4].legend(lines, labels)
+axes[5].legend(lines, labels)
